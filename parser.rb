@@ -1,4 +1,5 @@
 require 'nokogiri'
+require 'json'
 # require 'pry'
 
 # # check unicode values for arabic characters (between 1571 and 1618)
@@ -18,18 +19,29 @@ p "alif hamza: " "أ".ord
 root_word_styles = styles["0.0"]
 
 regex = /(?<= |^)[\u0620-\u0660 ]+(?= |$)/
+current_root = nil;
+autonum = 1
 
 root_words = hw_source.xpath("//office:text/text:p")
 	.map{ |tag| 
-            { 
+            is_root = check_is_root(tag)
+            word = { 
+            	id: autonum,
                 word: regex.match(tag.text).to_s, 
                 text: tag.text, 
-                style: tag.attributes["style-name"].value, 
-                is_root: root_word_styles.include?(tag.attributes["style-name"].value)
+                is_root: is_root,
+                root: current_root
             }
+            current_root = autonum if is_root
+            autonum += 1 
+           	word
         } 
 
-root_words.each { |rw| puts rw };
+File.write 'results.json', root_words[0...1000].to_json
+
+def check_is_root(tag) {
+	root_word_styles.include?(tag.attributes["style-name"].value)
+}
 
 
 # Pry::ColorPrinter.pp(styles.sort_by{|k,v| k}.to_h)
