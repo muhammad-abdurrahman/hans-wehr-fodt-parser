@@ -39,22 +39,20 @@ puts "Open"
 current_root = autonum
 
 insert = db.prepare <<-SQL
-    INSERT INTO Words (rowid, RootWordId, ArabicWord, IsRoot, Definition)
+    INSERT INTO WordView (rowid, RootWordId, ArabicWord, IsRoot, Definition)
     VALUES (?,?,?,?,?)
 SQL
-root_words = hw_source.xpath("//office:text/text:p")
-	.map{ |tag| 
-            arabic_word = word_regex.match(tag.text).to_s
+hw_source.xpath("//office:text/text:p")
+	.each{ |tag| 
             word = { 
             	id: autonum,
-                word: arabic_word, 
+                word: word_regex.match(tag.text).to_s, 
                 text: tag.text, 
                 is_root: check_is_root(tag),
                 root: current_root
             }
-            p word
             insert.execute word[:id],word[:root],word[:word],word[:is_root] ? 1 : 0,word[:text]
-            current_root = autonum if check_is_root(tag)
+            current_root = autonum if word[:is_root]
             autonum += 1 
         } 
 
