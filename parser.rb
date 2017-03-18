@@ -7,6 +7,8 @@ require "sqlite3"
 # ara_chars = "ابتثجحخدذرزسشصضطظعغفقكلمنهويأإىؤءئًٌٍَُِّْ"
 # ara_chars.chars.each { |char| puts char + ": " + char.ord.to_s } 
 
+
+
 hw_source = File.open("hanswehr.xml") { |f| Nokogiri::XML(f) }
 
 styles = Hash.new {|h,k| h[k]=[]}
@@ -18,7 +20,7 @@ end
 
 $root_word_styles = styles["0.0"]
 
-word_regex = /(?<= |^)[\u0620-\u0660 ]+(?= |$)/
+word_regex = /(?<=[ (\d])?[\u0620-\u0660]+/
 current_root = nil;
 autonum = 1
 
@@ -34,14 +36,31 @@ def check_is_root(tag)
 end
 
 # Open a database
+File.delete("hanswehr.db")
+puts "Deleted existings hanswehr.db"
+
 db = SQLite3::Database.new "hanswehr.db"
-puts "Open"
+puts "Opened (created) hanswehr.db"
+
+sql_file = File.open("create.sql", "rb")
+create_db = sql_file.read
+sql_file.close
+
+puts create_db
+
+# db.execute create_db #doesnt work
+`cat create.sql | sqlite3 hanswehr.db`
+puts "Created tables in hanswehr.db"
+
+
 current_root = autonum
 
 insert = db.prepare <<-SQL
     INSERT INTO WordView (rowid, RootWordId, ArabicWord, IsRoot, Definition)
     VALUES (?,?,?,?,?)
 SQL
+
+puts "Prepared insert query, about to parse"
 hw_source.xpath("//office:text/text:p")
 	.each{ |tag| 
             word = { 
