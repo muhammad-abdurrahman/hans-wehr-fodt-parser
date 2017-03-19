@@ -21,8 +21,9 @@ end
 $root_word_styles = styles["0.0"]
 
 word_regex = /(?<=[ (\d])?[\u0620-\u0660]+/
-current_root = nil;
+current_root_id = -1;
 autonum = 1
+current_root = nil
 
 def check_is_root(tag)
 	styleMatch = $root_word_styles.include? tag.attributes["style-name"].value
@@ -30,9 +31,16 @@ def check_is_root(tag)
 	# has to be directly at the beginning of the definition
 	# rootBeginningRegex = /^\d?[\u0620-\u0660]{3} *[a-z']+ *[aiu] / 
     regexMatch = false; # not yet implemented
-    romanNumeralsMatch = false # not yet implemented
+    romanNumeralsMatch = /(II|III|IV|V |VI|VII|VIII|IX|X)/ =~ tag.text
     
 	return styleMatch || regexMatch || romanNumeralsMatch
+end
+
+def check_is_thulaathi(word)
+    romanNumeralsMatch = /(II|III|IV|V |VI|VII|VIII|IX|X)/ =~ word[:text]
+    # other checks?
+
+	return romanNumeralsMatch
 end
 
 # Open a database
@@ -46,21 +54,17 @@ sql_file = File.open("create.sql", "rb")
 create_db = sql_file.read
 sql_file.close
 
-puts create_db
-
 # db.execute create_db #doesnt work
 `cat create.sql | sqlite3 hanswehr.db`
 puts "Created tables in hanswehr.db"
 
-
-current_root = autonum
 
 insert = db.prepare <<-SQL
     INSERT INTO WordView (rowid, RootWordId, ArabicWord, IsRoot, Definition)
     VALUES (?,?,?,?,?)
 SQL
 
-puts "Prepared insert query, about to parse"
+puts "Beginning parse"
 hw_source.xpath("//office:text/text:p")
 	.each{ |tag| 
             word = { 
@@ -68,11 +72,30 @@ hw_source.xpath("//office:text/text:p")
                 word: word_regex.match(tag.text).to_s, 
                 text: tag.text, 
                 is_root: check_is_root(tag),
-                root: current_root
             }
-            insert.execute word[:id],word[:root],word[:word],word[:is_root] ? 1 : 0,word[:text]
-            current_root = autonum if word[:is_root]
+            word[:is_thulaathi] = check_is_thulaathi(word)
+            if word[:is_thulaathi]
+                current_root = word
+                current_root_id = autonum 
+                word[:is_root] = true
+            end
+
+            #check if this word is really derived from the root.
+            root_letters = current_root[:word] rescue ""
+            letters = word[:word]
+            derivedCheckRegex = Regexp.new("^[سألتمونيها#{root_letters}]+$")
+            print derivedCheckRegex
+            if word[:is_thulaathi] and derivedCheckRegex =~ word[:word] then
+                puts "YES: #{letters} derived from #{root_letters}" 
+                word[:root] = current_root_id
+            else
+                puts "NO: #{letters} NOT derived from #{root_letters}"      
+                word[:root] = -1
+                current_root_id = -1                           
+            end
             autonum += 1 
+            insert.execute word[:id],word[:root],word[:word],word[:is_root] ? 1 : 0,word[:text]
+            
         } 
 
 
