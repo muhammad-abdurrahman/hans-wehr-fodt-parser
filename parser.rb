@@ -73,29 +73,31 @@ hw_source.xpath("//office:text/text:p")
                 text: tag.text, 
                 is_root: check_is_root(tag),
             }
+
+            #check if this word is really derived from the root.
+            root_letters = current_root[:word] rescue ""
+            letters = word[:word]
+            derivedCheckRegex = Regexp.new("^[سألتمونيهاةءؤئىآ#{root_letters}]+$")
+            
             word[:is_thulaathi] = check_is_thulaathi(word)
             if word[:is_thulaathi]
                 current_root = word
                 current_root_id = autonum 
                 word[:is_root] = true
+                word[:root] = -1;
             end
 
-            #check if this word is really derived from the root.
-            root_letters = current_root[:word] rescue ""
-            letters = word[:word]
-            derivedCheckRegex = Regexp.new("^[سألتمونيها#{root_letters}]+$")
-            print derivedCheckRegex
-            if word[:is_thulaathi] and derivedCheckRegex =~ word[:word] then
-                puts "YES: #{letters} derived from #{root_letters}" 
+            if !word[:is_thulaathi] and derivedCheckRegex =~ word[:word] then
+                # puts "YES: #{letters} derived from #{root_letters}" 
                 word[:root] = current_root_id
             else
-                puts "NO: #{letters} NOT derived from #{root_letters}"      
-                word[:root] = -1
-                current_root_id = -1                           
+                # puts "NO: #{letters} NOT derived from #{root_letters}"      
+                word[:root] = -1                         
             end
+
+
             autonum += 1 
-            insert.execute word[:id],word[:root],word[:word],word[:is_root] ? 1 : 0,word[:text]
-            
+            res = insert.execute word[:id],word[:root],word[:word],word[:is_root] ? 1 : 0,word[:text]
         } 
 
 
