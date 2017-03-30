@@ -3,3 +3,4 @@ source "https://rubygems.org"
 
 gem "nokogiri"
 gem "pry"
+gem "sqlite3"
